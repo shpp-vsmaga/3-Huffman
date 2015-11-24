@@ -44,8 +44,6 @@ string getBodyFromFile(ifstream &file, int delCh);
 void writeDeArchFile(string fileName, string &body, BSTNode *root, int sourceFileLength);
 int getLengthFromArchive(ifstream &archivedFile);
 
-/* Global variables*/
-//MapSHPP<char, string> table; //used to add lines in recursive pass through the tree
 
 /* Main program */
 int main() {
@@ -183,7 +181,6 @@ PQueueSHPP<BSTNode*> getQueue(MapSHPP<char, int> &alphabet){
         BSTNode *node = new BSTNode;
         node->left = node->right = 0;
         node->ch = ch;
-
         queue.enqueue(node, alphabet[ch]);
     }
     return queue;
@@ -261,7 +258,6 @@ string getAlphabetForFile(MapSHPP<char, int> &alphabet){
         result += ch;
         result += integerToString(alphabet[ch]);
         result += ';';
-
     }
     result += "}}"; //mark end of the coding table in archive file
     return result;
@@ -315,22 +311,14 @@ void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int
     /* Go through char array, code all characters according to coding table in combination of bits
     *  and directly write it to archive file in the binary mode.
     */
-//    for (int j = 0; j < length; j++) {
-//            for(int i = 0; i < table[buffer[j]].length(); i++){
-//                if (table[buffer[j]][i] == '1') outFile.writeBit(1);
-//                else outFile.writeBit(0);
-//            }
-//    }
     for (int j = 0; j < length; j++) {
-                char ch = buffer[j];
-
-                string str = table.get(ch);
-
-                for(int i = 0; i < str.length(); i++){
-                    if (str[i] == '1') outFile.writeBit(1);
-                    else outFile.writeBit(0);
-                }
+        char ch = buffer[j];
+        string str = table.get(ch);
+        for(int i = 0; i < str.length(); i++){
+            if (str[i] == '1') outFile.writeBit(1);
+            else outFile.writeBit(0);
         }
+    }
     outFile.close();
 }
 
@@ -374,8 +362,6 @@ void dearchiveFile(string archiveName, string resultName){
 
     /* Writing encoded file*/
     writeDeArchFile(resultName, inputFileBody, root, sourceFileLength);
-
-
 }
 
 /**
