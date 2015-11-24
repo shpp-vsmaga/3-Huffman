@@ -12,14 +12,13 @@
 #include <iostream>
 #include <string>
 #include "console.h"
-#include "map.h"
-#include "random.h"
 #include "strlib.h"
-#include "vector.h"
 #include "simpio.h"
 #include "filelib.h"
-#include "pqueue.h"
 #include "bitstream.h"
+
+#include "mapshpp.h"
+#include "pqueueshpp.h"
 
 
 using namespace std;
@@ -32,21 +31,21 @@ struct BSTNode {
 
 /* Function prototypes*/
 void archiveFile(string sourceFilename, string resultFilename);
-Map<char, int> getAlphabet(ifstream &infile, int &sourceFileLength);
-PriorityQueue<BSTNode*> getQueue (Map<char, int> &alphabet);
-BSTNode* getTree(PriorityQueue<BSTNode*> queue);
-void getTable(BSTNode* tree, string way, Map<char, string> &table);
-string getAlphabetForFile(Map<char, int> &alphabet);
+MapSHPP<char, int> getAlphabet(ifstream &infile, int &sourceFileLength);
+PQueueSHPP<BSTNode*> getQueue (MapSHPP<char, int> &alphabet);
+BSTNode* getTree(PQueueSHPP<BSTNode*> queue);
+void getTable(BSTNode* tree, string way, MapSHPP<char, string> &table);
+string getAlphabetForFile(MapSHPP<char, int> &alphabet);
 string getCodeFromFile(ifstream &archivedFile);
-Map<char, int> parseCodeString(string codeString);
-void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, Map<char, string> &table);
+MapSHPP<char, int> parseCodeString(string codeString);
+void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, MapSHPP<char, string> &table);
 void dearchiveFile(string archiveName, string resultName);
 string getBodyFromFile(ifstream &file, int delCh);
 void writeDeArchFile(string fileName, string &body, BSTNode *root, int sourceFileLength);
 int getLengthFromArchive(ifstream &archivedFile);
 
 /* Global variables*/
-//Map<char, string> table; //used to add lines in recursive pass through the tree
+//MapSHPP<char, string> table; //used to add lines in recursive pass through the tree
 
 /* Main program */
 int main() {
@@ -100,8 +99,8 @@ int main() {
  */
 
 void archiveFile(string sourceFilename, string resultFilename){
-    Map<char, int> alphabet; // alphabet with all characters used in the source file and their frequencies
-    PriorityQueue<BSTNode*> queue; // queue for building the tree
+    MapSHPP<char, int> alphabet; // alphabet with all characters used in the source file and their frequencies
+    PQueueSHPP<BSTNode*> queue; // queue for building the tree
     ifstream sourceFile;
     sourceFile.open(sourceFilename);
     int sourceFileLength = 0;
@@ -121,7 +120,7 @@ void archiveFile(string sourceFilename, string resultFilename){
 
     /* Table for coding characters saved in the Map "table" */
     string way = ""; // way to the character in the binary tree in format "010100..."
-    Map<char, string> table;
+    MapSHPP<char, string> table;
     getTable(tree, way, table);
     cout << "Table for coding created!!!" << endl;
 
@@ -149,8 +148,8 @@ void archiveFile(string sourceFilename, string resultFilename){
  * @param &sourceFileLength Link to variable for storing source file length.
  * @return Map with the characters and their frequencies
  */
-Map<char, int> getAlphabet(ifstream &infile, int &sourceFileLength){
-    Map<char, int> alphabet;
+MapSHPP<char, int> getAlphabet(ifstream &infile, int &sourceFileLength){
+    MapSHPP<char, int> alphabet;
     char ch;
     while (infile.get(ch)) {
         if (alphabet.containsKey(ch)){
@@ -175,11 +174,12 @@ Map<char, int> getAlphabet(ifstream &infile, int &sourceFileLength){
  * @param alphabet Link to the Map with the characters and their frequencies
  * @return Ready priority queue with right priorities of every characters.
  */
-PriorityQueue<BSTNode*> getQueue(Map<char, int> &alphabet){
+PQueueSHPP<BSTNode*> getQueue(MapSHPP<char, int> &alphabet){
 
-    PriorityQueue<BSTNode*> queue;
+    PQueueSHPP<BSTNode*> queue;
 
-    for(char ch: alphabet){
+    for(int i = 0; i < alphabet.size(); i++){
+        char ch = alphabet.getKey(i);
         BSTNode *node = new BSTNode;
         node->left = node->right = 0;
         node->ch = ch;
@@ -201,9 +201,10 @@ PriorityQueue<BSTNode*> getQueue(Map<char, int> &alphabet){
  * @param queue Priority queue with all characters of the source file.
  * @return Binary tree for the Huffman's algoritm.
  */
-BSTNode* getTree(PriorityQueue<BSTNode*> queue){
+BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
 
     while(queue.size() != 1){
+
         int newPriority = queue.peekPriority();
         BSTNode* newNode = new BSTNode;
         newNode->ch = 0;
@@ -212,6 +213,7 @@ BSTNode* getTree(PriorityQueue<BSTNode*> queue){
 
         newNode->right = queue.dequeue();
         queue.enqueue(newNode, newPriority);
+
     }
     return queue.dequeue(); // last element of the queue
 }
@@ -230,12 +232,12 @@ BSTNode* getTree(PriorityQueue<BSTNode*> queue){
  * @param way String variable to store new code for character
  * @param table Map with characters and it's their new bit codes in the tring format.
  */
-void getTable(BSTNode *tree, string way, Map<char, string> &table){
+void getTable(BSTNode *tree, string way, MapSHPP<char, string> &table){
     if (tree != 0){
         getTable(tree->left, way + "0", table);
         if (tree->ch != 0)
             //cout << tree->ch << " way - " <<way<< endl;
-            table.add(tree->ch, way);
+            table.put(tree->ch, way);
         getTable(tree->right, way + "1", table);
     } else {
         return;
@@ -252,9 +254,10 @@ void getTable(BSTNode *tree, string way, Map<char, string> &table){
  * @param alphabet Link to the Map with the characters and their frequencies
  * @return Alphabet map transformed in the specified string.
  */
-string getAlphabetForFile(Map<char, int> &alphabet){
+string getAlphabetForFile(MapSHPP<char, int> &alphabet){
     string result;
-    for(char ch: alphabet){
+    for(int i = 0; i < alphabet.size(); i++){
+        char ch = alphabet.getKey(i);
         result += ch;
         result += integerToString(alphabet[ch]);
         result += ';';
@@ -280,7 +283,7 @@ string getAlphabetForFile(Map<char, int> &alphabet){
  * @param sourceFileLength Length of the source file.
  * @param table Map with characters and their new codes.
  */
-void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, Map<char, string> &table){
+void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, MapSHPP<char, string> &table){
     istringbitstream fileLengthStr (integerToString(sourceFileLength) + '{');
     istringbitstream codeBin(code);
     ofbitstream outFile(archiveName);
@@ -312,12 +315,22 @@ void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int
     /* Go through char array, code all characters according to coding table in combination of bits
     *  and directly write it to archive file in the binary mode.
     */
+//    for (int j = 0; j < length; j++) {
+//            for(int i = 0; i < table[buffer[j]].length(); i++){
+//                if (table[buffer[j]][i] == '1') outFile.writeBit(1);
+//                else outFile.writeBit(0);
+//            }
+//    }
     for (int j = 0; j < length; j++) {
-            for(int i = 0; i < table[buffer[j]].length(); i++){
-                if (table[buffer[j]][i] == '1') outFile.writeBit(1);
-                else outFile.writeBit(0);
-            }
-    }
+                char ch = buffer[j];
+
+                string str = table.get(ch);
+
+                for(int i = 0; i < str.length(); i++){
+                    if (str[i] == '1') outFile.writeBit(1);
+                    else outFile.writeBit(0);
+                }
+        }
     outFile.close();
 }
 
@@ -344,7 +357,7 @@ void dearchiveFile(string archiveName, string resultName){
     string codeString = getCodeFromFile(archivedFile);
 
     /* Writing string with encoding table to Map*/
-    Map<char, int> alphFromFile = parseCodeString(codeString);
+    MapSHPP<char, int> alphFromFile = parseCodeString(codeString);
 
     archivedFile.close();
     archivedFile.open(archiveName, ifstream::binary); //open archive file in binary mode
@@ -354,7 +367,7 @@ void dearchiveFile(string archiveName, string resultName){
     archivedFile.close();
 
     /* Queue for building the tree generated from encoding table*/
-    PriorityQueue<BSTNode*> queue = getQueue(alphFromFile);
+    PQueueSHPP<BSTNode*> queue = getQueue(alphFromFile);
 
     /* Huffman tree generated from the encoding table */
     BSTNode * root = getTree(queue);
@@ -414,7 +427,7 @@ string getCodeFromFile(ifstream &archivedFile){
 
 /**
  * Function: parseCodeString
- * Usage: Map<char, int> alphFromFile = parseCodeString(codeString);
+ * Usage: MapSHPP<char, int> alphFromFile = parseCodeString(codeString);
  * -----------------------------------------------------------------------------------
  *
  * This function parsing coding table and save it the map of characters and their frequensies
@@ -422,8 +435,8 @@ string getCodeFromFile(ifstream &archivedFile){
  * @param codeString Coding table in the string format.
  * @return Map with characters and their frequensies.
  */
-Map<char, int> parseCodeString(string codeString){
-    Map<char, int> result;
+MapSHPP<char, int> parseCodeString(string codeString){
+    MapSHPP<char, int> result;
     bool keyTrig = true; // trigger to separate key of the map
     bool valueTrig = false; // trigger to separate value of key
     char key;
