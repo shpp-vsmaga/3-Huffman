@@ -237,7 +237,7 @@ void VectorSHPP<ValueType>::extendArray(){
 template<typename ValueType>
 VectorSHPP<ValueType>::~VectorSHPP(){
     count = 0;
-    delete[] array;
+    //delete[] array;
 }
 
 #endif // VECTORSHPP
