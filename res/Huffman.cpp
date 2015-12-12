@@ -130,13 +130,13 @@ void archiveFile(string sourceFilename, string resultFilename){
      * stored in string format and separators for subsequent writing to the archive file
      */
     string alphabetForFile = getAlphabetForFile(alphabet);
-    delete[] alphabet;
+    //delete[] alphabet;
     cout << "Alphabet for file created!!!" << endl;
 
     /* Writing the result archive file with source file length, table for encoding and new body*/
     sourceFile.open(sourceFilename, ifstream::binary);
     writeArchiveFile(sourceFile, alphabetForFile, resultFilename, sourceFileLength, table);
-    delete[] table;
+    //delete[] table;
     sourceFile.close();
 }
 
@@ -329,7 +329,7 @@ void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int
             else outFile.writeBit(0);
         }
     }
-    delete[] buffer;
+    //delete[] buffer;
     outFile.close();
 }
 
@@ -367,7 +367,7 @@ void dearchiveFile(string archiveName, string resultName){
 
     /* Queue for building the tree generated from encoding table*/
     PQueueSHPP<BSTNode*> queue = getQueue(alphFromFile);
-    delete[] alphFromFile;
+    //delete[] alphFromFile;
 
     /* Huffman tree generated from the encoding table */
     BSTNode * root = getTree(queue);
