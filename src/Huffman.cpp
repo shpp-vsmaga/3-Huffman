@@ -11,12 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <bitset>
 #include "console.h"
-#include "strlib.h"
-#include "simpio.h"
-#include "filelib.h"
-#include "bitstream.h"
 
 #include "pqueueshpp.h"
 
@@ -25,7 +20,7 @@ using namespace std;
 
 /* Structure to save characters in binary tree*/
 struct BSTNode {
-    unsigned char ch;
+    char ch;
     bool isBusy = false;
     BSTNode *left, *right;
 };
@@ -41,51 +36,55 @@ string getCodeFromFile(ifstream &archivedFile, int sourceFileLength);
 int* parseCodeString(string codeString);
 void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, string *table);
 void dearchiveFile(string archiveName, string resultName);
-char* getBodyFromFile(ifstream &file, int delCh);
-void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength);
+char* getBodyFromFile(ifstream &file, int delCh, int& bodySize);
+void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength, int bodySize);
 int getLengthFromArchive(ifstream &archivedFile);
-
 char strToByte(string byte);
 string getBitsFromChar(char ch);
-int testTree(BSTNode* tree);
-
 
 const int BYTES_NUMBER = 256;
-int bodySize = 0;
+
+
 /* Main program */
 int main() {
+    cout << "Please enter command." << endl << "\"-ar\" to compress file, \"-de\" to decompress file or \"-ex\" to exit the program." << endl;
+    while (true){
+        string command;
+        cout << "Enter command: ";
+        cin >> command;
 
-    cout << "Please enter command." << endl << "\"-ar\" to compress file or \"-de\" to decompress file" << endl;
-    string command = getLine("Enter command: ");
-
-    if (toLowerCase(trim(command)) == "-ar"){
-        string sourceFileName = getLine("Please enter name of file to compress: ");
-
-        if(fileExists(sourceFileName)){
+        if (command == "-ar"){
+            string sourceFileName;
+            cout << "Please enter name of file to compress: ";
+            cin >> sourceFileName;
             cout << "Processing... " << endl << endl;
             archiveFile(sourceFileName, sourceFileName + ".huf");
             cout << "Archivation done. File: (" << sourceFileName + ".huf) " << "created." << endl;
-        } else {
-            cout << "Enter a valid file name!!!" << endl;
-        }
+        } else if (command == "-de"){
+            string archiveFileName;
+            cout <<"Please enter name of file to decompress: ";
+            cin >> archiveFileName;
 
-    } else if (toLowerCase(trim(command)) == "-de"){
-        string archiveFileName = getLine("Please enter name of file to decompress: ");
-
-        if (fileExists(archiveFileName) && getExtension(archiveFileName) == ".huf"){
-            cout << "Processing... " << endl << endl;
-            dearchiveFile(archiveFileName, "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4));
-            cout << "Extraction done!!! File("<< "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4) << ") created" << endl;
-        } else {
-            cout << "File not exist or not Huffman archive" << endl;
+            if (archiveFileName.substr(archiveFileName.length() - 4) == ".huf"){
+                cout << "Processing... " << endl << endl;
+                dearchiveFile(archiveFileName, "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4));
+                cout << "Extraction done!!! File("<< "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4) << ") created" << endl;
+            } else {
+                cout << "File not exist or not Huffman archive" << endl;
+            }
+        } else if (command == "-ex"){
+            return 0;
         }
-    } else {
-        cout << "Please enter a valid command \"-ar\" or \"-de\"!!!" << endl;
+        else {
+            cout << "Please enter a valid command \"-ar\" or \"-de\"!!!" << endl;
+        }
     }
 
     return 0;
 }
 
+
+//-----------------------Encoding------------------------------------------------------
 /** Function: archiveFile
  * Usage: archiveFile(sourceFileName, sourceFileName + ".huf");
  * ------------------------------------------------------------------------------------
@@ -104,24 +103,23 @@ int main() {
  */
 
 void archiveFile(string sourceFilename, string resultFilename){
-    //int *alphabet; // alphabet with all characters used in the source file and their frequencies
+
     PQueueSHPP<BSTNode*> queue; // queue for building the tree
     ifstream sourceFile(sourceFilename, ifstream::binary);
-    //sourceFile.open(sourceFilename);
     int sourceFileLength = 0;
+
     /* Alphabet with all characters used in the source file and their frequencies */
     int *alphabet = getAlphabet(sourceFile, sourceFileLength);
     sourceFile.close();
-    cout << "File length: " << sourceFileLength << endl;
-    cout << "Alphabet readed!!!" << endl;
+
 
     /* Queue for building the tree*/
     queue = getQueue(alphabet);
-    cout << "Queue created!!!" << endl;
+
 
     /* Huffman tree generated from the exact frequencies of the text */
     BSTNode* tree = getTree(queue);
-    cout << "Tree created!!!" << endl;
+
 
     /* Table for coding characters saved in the array "table" */
     string way = ""; // way to the character in the binary tree in format "010100..."
@@ -130,20 +128,19 @@ void archiveFile(string sourceFilename, string resultFilename){
         table[i] = "";
     }
     getTable(tree, way, table);
-    cout << "Table for coding created!!!" << endl;
+
 
     /* Alphabet with all characters used in the source file and their frequencies
      * stored in string format and separators for subsequent writing to the archive file
      */
     string alphabetForFile = getAlphabetForFile(alphabet);
-    //delete[] alphabet;
-    cout << "Alphabet for file created!!!" << endl;
+
 
     /* Writing the result archive file with source file length, table for encoding and new body*/
     sourceFile.open(sourceFilename, ifstream::binary);
     writeArchiveFile(sourceFile, alphabetForFile, resultFilename, sourceFileLength, table);
-    //delete[] table;
-    //delete[] alphabet;
+    delete[] table;
+    delete[] alphabet;
     sourceFile.close();
 }
 
@@ -174,25 +171,9 @@ int* getAlphabet(ifstream &sourceFile, int &sourceFileLength){
     sourceFile.read(buffer, length);
 
     for(int i = 0; i < length; i++){
-        unsigned char ch = buffer[i];
-        //alphabet[buffer[i]]++;
-        alphabet[(int)ch]++;
+        char ch = buffer[i];
+        alphabet[(int)(unsigned char)ch]++;
     }
-
-    //------------------------------------------------
-    int counter = 0;
-    for (int i = 0; i < BYTES_NUMBER; i++){
-        if (alphabet[i] != 0) counter++;
-    }
-
-    cout << "Number of chars for coding: " << counter << endl;
-    //------------------------------------------------
-
-//    char ch;
-//    while (infile.get(ch)) {
-//        alphabet[ch]++;
-//        sourceFileLength++;
-//    }
 
     return alphabet;
 }
@@ -241,13 +222,11 @@ PQueueSHPP<BSTNode*> getQueue(int *alphabet){
 BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
 
     while(queue.size() != 1){
-
         int newPriority = queue.peekPriority();
         BSTNode* newNode = new BSTNode;
         newNode->ch = 0;
         newNode->left = queue.dequeue();
         newPriority += queue.peekPriority();
-
         newNode->right = queue.dequeue();
         queue.enqueue(newNode, newPriority);
 
@@ -272,9 +251,9 @@ BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
 void getTable(BSTNode *tree, string way, string *table){
     if (tree != 0){
         getTable(tree->left, way + "0", table);
-        if (tree->isBusy)
-            cout << tree->ch << " way - " <<way<< endl;
-            table[tree->ch] = way;
+        if (tree->isBusy){
+            table[(int)(unsigned char)tree->ch] = way;
+        }
         getTable(tree->right, way + "1", table);
     } else {
         return;
@@ -293,19 +272,14 @@ void getTable(BSTNode *tree, string way, string *table){
  */
 string getAlphabetForFile(int *alphabet){
     string result;
-    //-----
-    int counter = 0;
-    //-----
     for(int i = 0; i < BYTES_NUMBER; i++){
         if(alphabet[i] != 0){
             unsigned char ch = i;
-            counter++;
             result += ch;
-            result += integerToString(alphabet[i]);
+            result += to_string(alphabet[i]);
             result += ';';
         }
     }
-    cout << "Num chars in getAlphabetForFile:  " << counter << endl;
     result += "}}"; //mark end of the coding table in archive file
     return result;
 }
@@ -327,141 +301,71 @@ string getAlphabetForFile(int *alphabet){
  * @param table array of new bit codes of the characters.
  */
 void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, string *table){
-//    istringbitstream fileLengthStr (integerToString(sourceFileLength) + '{');
-//    istringbitstream codeBin(code);
-//    ofbitstream outFile(archiveName);
-
-//    /*Writing length of source file to archive file*/
-//    int bitLength;
-//    while (bitLength != -1) {
-//        bitLength = fileLengthStr.readBit();
-//        if (bitLength == 1) outFile.writeBit(1);
-//        else if (bitLength == 0)outFile.writeBit(0);
-//    }
-
-//    /*Writing alphabet of source file with characts frequency to archive file*/
-//    int bit;
-//    while (bit != -1){
-//        bit = codeBin.readBit();
-//        if (bit == 1) outFile.writeBit(1);
-//        else if (bit == 0)outFile.writeBit(0);
-//    }
 
     ofstream outFile(archiveName, ofstream::binary);
-    outFile << integerToString(sourceFileLength) << "{" << code;
+    outFile << to_string(sourceFileLength) << "{" << code;
 
     /* Reading whole source file to char array*/
     sourceFile.seekg(0, sourceFile.end);
     int length = sourceFile.tellg();
     sourceFile.seekg(0, sourceFile.beg);
-
     char *buffer = new char[length];
     sourceFile.read(buffer, length);
 
-    cout << "Length while writting: " << length << endl;
 
     /* Go through char array, code all characters according to coding table in combination of bits
-    *  and directly write it to archive file in the binary mode.
+    *  and write it's binary values to string .
     */
 
-    //----
-    int counter = 0;
-    //----
-
-    string bodyBitStr;
+    string bodyBitStr = "";
     for (int j = 0; j < length; j++) {
-        //cout << " :) " << endl;
-        unsigned char ch = buffer[j];
-        //cout << ch;
-        //cout << " " << (int)ch;
-        bodyBitStr += table[(int)ch];
-        counter++;
-        //cout << " "<< table[(int)ch] << endl;
-        //cout << ch << " - " << str << endl;
-//        for(int i = 0; i < str.length(); i++){
-//            if (str[i] == '1') outFile.writeBit(1);
-//            else outFile.writeBit(0);
-//        }
-
+        char ch = buffer[j];
+        bodyBitStr += table[(int)(unsigned char)ch];
     }
-    cout << "Chars coded in writeArchiveFile: " << counter << endl;
-    cout << "Body bit str done" << endl;
 
-    //cout << "bodyBitStr: " << bodyBitStr << endl;
-    //cout << "bodyBitStr size: " << bodyBitStr.size() << endl;
-//    if(bodyBitStr.size()%8 != 0){
-//        int count = bodyBitStr.size()%8;
-//        cout << "count - " << count << endl;
-//        for (int i = 0; i < count; i++){
-//            bodyBitStr += "0";
-//        }
-//    }
-//    cout << "bodyBitStr new : " << bodyBitStr << endl;
+    /* Split bodyBitStr into portions of 8 bits, transorm them to real bytes and write them to the file.*/
     int count = bodyBitStr.size() / 8;
-    if(bodyBitStr.size() % 8 != 0) count++;
-
-    //---
-    int counter1 = 0;
-    //---
+    if(bodyBitStr.size() % 8 != 0) {
+        count++;
+    }
 
     for(int i = 0; i < count; i++){
         string part = bodyBitStr.substr(i * 8, 8);
-        //cout << part << endl;
         char ch = strToByte(part);
         outFile.write((char*)&ch, sizeof(ch));
-        counter1++;
-
     }
-    cout << "Body bytes writen: " << counter1 << endl;
+
     delete[] buffer;
     outFile.close();
 }
 
 /**
  * Function: strToByte
+ * Usage:  char ch = strToByte(part);
  * ----------------------------------------------------------------------------
  *
- * @param byte
- * @return
+ * This function transfor received string that contains 8 '0' or '1' to real byte.
+ *
+ * @param byte String with 8 '0' and '1'
+ * @return Real char value of received string
  */
 char strToByte(string byte){
     int result = 0;
+    int currentBitValue = 128;
+
     for (int i = 0; i < 8; i++){
         if (byte[i] == '1'){
-            switch (i) {
-            case 0:
-                result += 128;
-                break;
-            case 1:
-                result += 64;
-                break;
-            case 2:
-                result += 32;
-                break;
-            case 3:
-                result += 16;
-                break;
-            case 4:
-                result += 8;
-                break;
-            case 5:
-                result += 4;
-                break;
-            case 6:
-                result += 2;
-                break;
-            case 7:
-                result += 1;
-                break;
-            default:
-                break;
-            }
+            result += currentBitValue;
         }
+        currentBitValue /=2;
     }
     return (unsigned char) result;
 }
 
-//-------------------------------------------------------------------------------------
+
+
+
+//------------------------Decoding-----------------------------------------------------
 
 /** Function: dearchiveFile
  * Usage: dearchiveFile(archiveFileName, "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4));
@@ -479,34 +383,27 @@ void dearchiveFile(string archiveName, string resultName){
 
     /* Reading length of the source file from archive */
     int sourceFileLength = getLengthFromArchive(archivedFile);
-    cout << "Length readed" << endl;
+
     /* Reading string with encoding table*/
     string codeString = getCodeFromFile(archivedFile, sourceFileLength);
-    cout << "Code string readed" << endl;
+
     /* Writing string with encoding table to array*/
     int* alphFromFile = parseCodeString(codeString);
-    cout << "Alphabet readed" << endl;
-
-    archivedFile.close();
-    archivedFile.open(archiveName, ifstream::binary); //open archive file in binary mode
 
     /* Reading body of the source file from archive*/
-    char* inputFileBody = getBodyFromFile(archivedFile, codeString.length() + 3 + integerToString(sourceFileLength).length());
+    int bodySize;
+    char* inputFileBody = getBodyFromFile(archivedFile, codeString.length() + 3 + to_string(sourceFileLength).length(), bodySize);
     archivedFile.close();
-    cout << "Body readed" << endl;
+
     /* Queue for building the tree generated from encoding table*/
     PQueueSHPP<BSTNode*> queue = getQueue(alphFromFile);
-    cout << "Queue created" << endl;
-    //delete[] alphFromFile;
 
     /* Huffman tree generated from the encoding table */
     BSTNode * root = getTree(queue);
-    cout << "Tree created" << endl;
 
-    int charsInTree = testTree(root);
-    cout << "Chars in tree: " << charsInTree << endl;
     /* Writing encoded file*/
-    writeDeArchFile(resultName, inputFileBody, root, sourceFileLength);
+    writeDeArchFile(resultName, inputFileBody, root, sourceFileLength, bodySize);
+    delete[] alphFromFile;
 }
 
 /**
@@ -528,8 +425,7 @@ int getLengthFromArchive(ifstream &archivedFile){
         result += currentCh;
         currentCh = archivedFile.get();
     }
-    cout << "Code length: " << result << endl;
-    return stringToInteger(result);
+    return stoi(result);
 }
 
 /**
@@ -549,34 +445,22 @@ string getCodeFromFile(ifstream &archivedFile, int sourceFileLength){
     int length = archivedFile.tellg();
     archivedFile.seekg(0, archivedFile.beg);
 
-//    unsigned char ch;
-//    for (int i =0; i < length; i++){
-//        ch = sourceFile.get();
-//        cout << (int)ch << " ";
-//    }
-//    archivedFile.get();
-//    archivedFile.get();
-//    archivedFile.get();
-//    archivedFile.get();
-    int trottle = integerToString(sourceFileLength).size() + 1;
-    for (int i = 0; i < trottle; i++){
+    int skip = to_string(sourceFileLength).size() + 1;
+    for (int i = 0; i < skip; i++){
         archivedFile.get();
     }
-    cout << "trottle = " << trottle << endl;
+
     unsigned char currentCh = archivedFile.get();
     unsigned char nextCh = archivedFile.get();
     for(int i = 0; i < length - 2; i++){
-
-        //cout << (int)currentCh << "-" <<currentCh << " ";
         if ((int)currentCh == 125 && (int)nextCh == 125){
             break;
         }
         result += currentCh;
         currentCh = nextCh;
         nextCh = archivedFile.get();
-
     }
-    //cout << endl << "code from file: " << result << endl;
+
     return result;
 }
 
@@ -593,16 +477,12 @@ string getCodeFromFile(ifstream &archivedFile, int sourceFileLength){
 int* parseCodeString(string codeString){
     int* result = new int[BYTES_NUMBER];
     for(int i = 0; i < BYTES_NUMBER; i++){
-            result[i] = 0;
-        }
+        result[i] = 0;
+    }
 
     bool keyTrig = true; // trigger to separate character
     bool valueTrig = false; // trigger to separate frequensy
     char key;
-
-    //------------
-    int counter = 0;
-    //------------
 
     string valueString;
     for (int i = 0; i < codeString.length(); i++){
@@ -620,15 +500,13 @@ int* parseCodeString(string codeString){
 
         if(!keyTrig && codeString[i] == ';'){
 
-            result[(int)(unsigned char)key] = stringToInteger(valueString); // write frequensy to array
-            counter++;
+            result[(int)(unsigned char)key] = stoi(valueString); // write frequensy to array
             keyTrig = true; // reset triggers to start again readint next key
             valueTrig = false;
             valueString.clear();
             continue;
         }
     }
-    cout << "Chars readed in parseCodeString: " << counter << endl;
     return result;
 }
 
@@ -643,10 +521,9 @@ int* parseCodeString(string codeString){
  * @param delCh Number of characters to delete from the begining.
  * @return Body of the source file saved it the string.
  */
-char* getBodyFromFile(ifstream &file, int delCh){
-    string result;
+char* getBodyFromFile(ifstream &file, int delCh, int& bodySize){
 
-     /* Determining the size of the file */
+    /* Determining the size of the file */
     file.seekg(0, file.end); // set cursor position to the end of file
     int length = file.tellg(); // tell it's position
     file.seekg(0, file.beg); // set cursor position to the begining of file
@@ -658,28 +535,12 @@ char* getBodyFromFile(ifstream &file, int delCh){
     bodySize = length - delCh;
 
     int j = 0;
-    char *tmpStr = new char[length - delCh];
+    char *result = new char[length - delCh];
     for (int i = delCh; i < length; i++){
-        tmpStr[j] = buffer[i];
+        result[j] = buffer[i];
         j++;
     }
-
-    cout << "Body bytes readed: " << j << endl;
-
-    cout << "delCh - " << delCh << endl;
-    cout << "length - " << length << endl;
-
-    int m = 0;
-    /* Transform char array to C++ string */
-    for(int i = 0; i < length - delCh; i++){
-        //result += tmpStr[i];
-        //cout << """" <<(int)tmpStr[i] << " i - " << i << " """;
-        m = i;
-    }
-    //cout << endl;
-    //cout << "m - " << m << endl;
-    //return result.substr(delCh); // body of file without source length and coding table
-    return tmpStr;
+    return result;
 }
 
 /**
@@ -700,29 +561,19 @@ char* getBodyFromFile(ifstream &file, int delCh){
  * @param root Binary tree with characters for decoding.
  * @param sourceFileLength Length of the source file.
  */
-void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength){
-    string bitStr;
-    cout << "Body size in writeDeArchFile: " << bodySize << endl;
+void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength, int bodySize){
+    string bitStr = "";
+
     for (int i = 0; i < bodySize; i++){
         bitStr += getBitsFromChar(body[i]);
     }
-    //cout << endl << "bitStr - / 8" << bitStr.length() << endl;
 
-
-
-
-    //istringbitstream binBody(body);
     ofstream result(fileName, ios::out | ios::binary);
 
     int chCounter = 0;
-    //int bit = 5;
     BSTNode *node = root;
 
     for (int i = 0; i < bitStr.size(); i++) {
-        //bit=binBody.readBit();
-        //cout << ":)";
-        /* Go through the tree*/
-
         if (bitStr[i] == '1') {
             node = node->right; // turn right if 1
         } else if (bitStr[i] == '0') {
@@ -731,8 +582,7 @@ void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileL
 
         /* if character found add it to the result file and back to start of the tree*/
         if (node->isBusy){
-           char byte = node->ch;
-            //result << node->ch;
+            char byte = node->ch;
             result.write((char*)&byte, sizeof(byte));
             chCounter++;
             node = root;
@@ -741,30 +591,25 @@ void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileL
 
 
     }
-    cout << "chCounter = " << chCounter;
     result.close();
 }
 
-
+/**
+ * Function: getBitsFromChar
+ * Usage: bitStr += getBitsFromChar(body[i]);
+ * -----------------------------------------------
+ * This function convert received byte in string
+ * of '0' and '1'
+ *
+ * @param ch Received byte of char type
+ * @return Byte in string representaion
+ */
 string getBitsFromChar(char ch){
     string result;
     for(int i = 7; i >= 0; i--){
         int bit = (ch >> i) & 1;
-        result += integerToString(bit);
-        //cout << integerToString(bit) << " ";
-    }
-
-    return result;
-}
-
-
-int testTree(BSTNode* tree){
-    int result = 0;
-    if (tree->isBusy){
-        result++;
-    } else{
-        result += testTree(tree->left);
-        result += testTree(tree->right);
+        result += to_string(bit);
     }
     return result;
 }
+
