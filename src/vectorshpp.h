@@ -89,6 +89,7 @@ public:
     /* Method: size
      * Usage: int size = vector.size();
      * ----------------------------------------------------
+	 *
      * Returns current number of the elements.
      */
     int size() const;
@@ -99,7 +100,17 @@ public:
      * Overloads [] operator for compatibility VectorSHPP with
      * standart arrays.
      */
-    ValueType& operator[](int);
+    const ValueType& operator[](int) const;
+
+    /* Copy constructor*/
+    VectorSHPP(const VectorSHPP<ValueType> & src);
+
+    /* Operator: =
+     * vectorNew = vectorOld;
+     * -----------------------------------------------------
+     * Overloads assign operator
+     */
+    VectorSHPP<ValueType> & operator=(const VectorSHPP<ValueType> & src);
 
 /* Private methods prototypes and instase variables*/
 private:
@@ -123,6 +134,13 @@ private:
      */
     void extendArray();
 
+    /* Method: deepCoping;
+     * Usage: deepCoping(VectorSHPP src);
+     * ------------------------------------------------
+     * Coping received  VectorSHPP to "this" VectorSHPP
+     */
+    void deepCoping(const VectorSHPP<ValueType> & src);
+
 };
 
 
@@ -133,10 +151,33 @@ VectorSHPP<ValueType>::VectorSHPP(){
     count = 0;
 }
 
+
 template<typename ValueType>
-ValueType & VectorSHPP<ValueType>::operator[](int index){
+void VectorSHPP<ValueType>::deepCoping(const VectorSHPP<ValueType> &src){
+    this->array = new ValueType[src.currentSize];
+    count = src.count;
+    currentSize = src.currentSize;
+    for (int i = 0; i < src.count; i++){
+        array[i] = src.array[i];
+    }
+}
+
+template<typename ValueType>
+VectorSHPP<ValueType>::VectorSHPP(const VectorSHPP<ValueType> & src){
+    deepCoping(src);
+}
+
+template<typename ValueType>
+VectorSHPP<ValueType> & VectorSHPP<ValueType>::operator =(const VectorSHPP<ValueType> & src){
+    delete[] array;
+    deepCoping(src);
+    return *this;
+}
+
+template<typename ValueType>
+const ValueType & VectorSHPP<ValueType>::operator[](int index) const {
     if(index < 0 || index >= count){
-        std::cout << "Fatal error: index is not valid" << std::endl;
+        std::cout << "operator[]::Fatal error: index is not valid" << std::endl;
         exit(1);
     }
 
@@ -159,7 +200,7 @@ void VectorSHPP<ValueType>::clear(){
 template <typename ValueType>
 ValueType VectorSHPP<ValueType>::get(int index) const{
     if(index < 0 || index >= count){
-        std::cout << "Fatal error: index is not valid" << std::endl;
+        std::cout << "get::Fatal error: index is not valid" << std::endl;
         exit(1);
     }
 
@@ -170,7 +211,7 @@ template <typename ValueType>
 void VectorSHPP<ValueType>::insert(int index, ValueType value){
     if (count == currentSize) extendArray();
     if(index < 0 || index >= count){
-        std::cout << "Fatal error: index is not valid" << std::endl;
+        std::cout << "insert::Fatal error: index is not valid" << std::endl;
         exit(1);
     }
 
@@ -198,7 +239,7 @@ bool VectorSHPP<ValueType>::isEmpty() const{
 template <typename ValueType>
 void VectorSHPP<ValueType>::remove(int index){
     if(index < 0 || index >= count){
-        std::cout << "Fatal error: index is not valid" << std::endl;
+        std::cout << "remove::Fatal error: index is not valid" << std::endl;
         exit(1);
     }
     for(int i = index; i < count-1; i++){
@@ -211,7 +252,7 @@ void VectorSHPP<ValueType>::remove(int index){
 template <typename ValueType>
 void VectorSHPP<ValueType>::set(int index, ValueType value){
     if(index < 0 || index >= count){
-        std::cout << "Fatal error: index is not valid" << std::endl;
+        std::cout << "set::Fatal error: index is not valid" << std::endl;
         exit(1);
     }
     array[index] = value;
@@ -236,7 +277,6 @@ void VectorSHPP<ValueType>::extendArray(){
 
 template<typename ValueType>
 VectorSHPP<ValueType>::~VectorSHPP(){
-    count = 0;
     //delete[] array;
 }
 

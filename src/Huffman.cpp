@@ -116,7 +116,6 @@ void archiveFile(string sourceFilename, string resultFilename){
     /* Queue for building the tree*/
     queue = getQueue(alphabet);
 
-
     /* Huffman tree generated from the exact frequencies of the text */
     BSTNode* tree = getTree(queue);
 
@@ -201,6 +200,7 @@ PQueueSHPP<BSTNode*> getQueue(int *alphabet){
             node->ch = ch;
             node->isBusy = true;
             queue.enqueue(node, alphabet[i]);
+
         }
     }
     return queue;
@@ -223,10 +223,12 @@ BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
 
     while(queue.size() != 1){
         int newPriority = queue.peekPriority();
+
         BSTNode* newNode = new BSTNode;
         newNode->ch = 0;
         newNode->left = queue.dequeue();
         newPriority += queue.peekPriority();
+
         newNode->right = queue.dequeue();
         queue.enqueue(newNode, newPriority);
 
@@ -252,7 +254,7 @@ void getTable(BSTNode *tree, string way, string *table){
     if (tree != 0){
         getTable(tree->left, way + "0", table);
         if (tree->isBusy){
-            table[(int)(unsigned char)tree->ch] = way;
+            table[(int)(unsigned char)tree->ch] = way;            
         }
         getTable(tree->right, way + "1", table);
     } else {
