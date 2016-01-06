@@ -11,7 +11,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "console.h"
 
 #include "pqueueshpp.h"
 
@@ -19,66 +18,61 @@
 using namespace std;
 
 /* Structure to save characters in binary tree*/
-struct BSTNode {
+struct TreeNode {
     char ch;
     bool isBusy = false;
-    BSTNode *left, *right;
+    TreeNode *left, *right;
 };
 
 /* Function prototypes*/
 void archiveFile(string sourceFilename, string resultFilename);
 int* getAlphabet(ifstream &infile, int &sourceFileLength);
-PQueueSHPP<BSTNode*> getQueue (int *alphabet);
-BSTNode* getTree(PQueueSHPP<BSTNode*> queue);
-void getTable(BSTNode* tree, string way, string *table);
+PQueueSHPP<TreeNode*> getQueue (int *alphabet);
+TreeNode* getTree(PQueueSHPP<TreeNode*> queue);
+void getTable(TreeNode* tree, string way, string *table);
 string getAlphabetForFile(int *alphabet);
 string getCodeFromFile(ifstream &archivedFile, int sourceFileLength);
 int* parseCodeString(string codeString);
 void writeArchiveFile(ifstream &sourceFile, string code, string archiveName, int sourceFileLength, string *table);
 void dearchiveFile(string archiveName, string resultName);
 char* getBodyFromFile(ifstream &file, int delCh, int& bodySize);
-void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength, int bodySize);
+void writeDeArchFile(string fileName, char* body, TreeNode *root, int sourceFileLength, int bodySize);
 int getLengthFromArchive(ifstream &archivedFile);
 char strToByte(string byte);
 string getBitsFromChar(char ch);
+void clearTree(TreeNode* tree);
 
 const int BYTES_NUMBER = 256;
 
 
 /* Main program */
-int main() {
-    cout << "Please enter command." << endl << "\"-ar\" to compress file, \"-de\" to decompress file or \"-ex\" to exit the program." << endl;
-    while (true){
-        string command;
-        cout << "Enter command: ";
-        cin >> command;
+int main(int argc, char* argv[]) {
 
-        if (command == "-ar"){
-            string sourceFileName;
-            cout << "Please enter name of file to compress: ";
-            cin >> sourceFileName;
-            cout << "Processing... " << endl << endl;
-            archiveFile(sourceFileName, sourceFileName + ".huf");
-            cout << "Archivation done. File: (" << sourceFileName + ".huf) " << "created." << endl;
-        } else if (command == "-de"){
-            string archiveFileName;
-            cout <<"Please enter name of file to decompress: ";
-            cin >> archiveFileName;
+    string command;
+    string filename;
 
-            if (archiveFileName.substr(archiveFileName.length() - 4) == ".huf"){
-                cout << "Processing... " << endl << endl;
-                dearchiveFile(archiveFileName, "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4));
-                cout << "Extraction done!!! File("<< "ORIGINAL_"+archiveFileName.substr(0, archiveFileName.length() - 4) << ") created" << endl;
-            } else {
-                cout << "File not exist or not Huffman archive" << endl;
-            }
-        } else if (command == "-ex"){
-            return 0;
-        }
-        else {
-            cout << "Please enter a valid command \"-ar\" or \"-de\"!!!" << endl;
-        }
+    if (argc == 3){
+        command = argv[1];
+        filename = argv[2];
     }
+
+    if (command == "-ar"){
+        cout << "Processing... " << endl << endl;
+        archiveFile(filename, filename + ".huf");
+        cout << "Archivation done. File: (" << filename + ".huf) " << "created." << endl;
+    } else if (command == "-de"){
+        if (filename.substr(filename.length() - 4) == ".huf"){
+            cout << "Processing... " << endl << endl;
+            dearchiveFile(filename, "ORIGINAL_"+filename.substr(0, filename.length() - 4));
+            cout << "Extraction done!!! File("<< "ORIGINAL_"+filename.substr(0, filename.length() - 4) << ") created" << endl;
+        } else {
+            cout << "File not exist or not Huffman archive" << endl;
+        }
+    } else {
+        cout << "Please enter a valid command \"-ar filename\" to archive file, \"-de filename\" to dearchive file!!!" << endl;
+        return 0;
+    }
+
 
     return 0;
 }
@@ -104,8 +98,9 @@ int main() {
 
 void archiveFile(string sourceFilename, string resultFilename){
 
-    PQueueSHPP<BSTNode*> queue; // queue for building the tree
+    PQueueSHPP<TreeNode*> queue; // queue for building the tree
     ifstream sourceFile(sourceFilename, ifstream::binary);
+
     int sourceFileLength = 0;
 
     /* Alphabet with all characters used in the source file and their frequencies */
@@ -117,7 +112,7 @@ void archiveFile(string sourceFilename, string resultFilename){
     queue = getQueue(alphabet);
 
     /* Huffman tree generated from the exact frequencies of the text */
-    BSTNode* tree = getTree(queue);
+    TreeNode* tree = getTree(queue);
 
 
     /* Table for coding characters saved in the array "table" */
@@ -140,6 +135,7 @@ void archiveFile(string sourceFilename, string resultFilename){
     writeArchiveFile(sourceFile, alphabetForFile, resultFilename, sourceFileLength, table);
     delete[] table;
     delete[] alphabet;
+    clearTree(tree);
     sourceFile.close();
 }
 
@@ -171,7 +167,7 @@ int* getAlphabet(ifstream &sourceFile, int &sourceFileLength){
 
     for(int i = 0; i < length; i++){
         char ch = buffer[i];
-        alphabet[(int)(unsigned char)ch]++;
+        alphabet[(unsigned char)ch]++;
     }
 
     return alphabet;
@@ -188,14 +184,14 @@ int* getAlphabet(ifstream &sourceFile, int &sourceFileLength){
  * @param alphabet array with the frequencies of the characters
  * @return Ready priority queue with right priorities of every characters.
  */
-PQueueSHPP<BSTNode*> getQueue(int *alphabet){
+PQueueSHPP<TreeNode*> getQueue(int *alphabet){
 
-    PQueueSHPP<BSTNode*> queue;
+    PQueueSHPP<TreeNode*> queue;
 
     for(int i = 0; i < BYTES_NUMBER; i++){
         if(alphabet[i] != 0){
             unsigned char ch = i;
-            BSTNode *node = new BSTNode;
+            TreeNode *node = new TreeNode;
             node->left = node->right = 0;
             node->ch = ch;
             node->isBusy = true;
@@ -219,12 +215,12 @@ PQueueSHPP<BSTNode*> getQueue(int *alphabet){
  * @param queue Priority queue with all characters of the source file.
  * @return Binary tree for the Huffman's algoritm.
  */
-BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
+TreeNode* getTree(PQueueSHPP<TreeNode*> queue){
 
     while(queue.size() != 1){
         int newPriority = queue.peekPriority();
 
-        BSTNode* newNode = new BSTNode;
+        TreeNode* newNode = new TreeNode;
         newNode->ch = 0;
         newNode->left = queue.dequeue();
         newPriority += queue.peekPriority();
@@ -250,11 +246,11 @@ BSTNode* getTree(PQueueSHPP<BSTNode*> queue){
  * @param way String variable to store new code for character
  * @param table array of new bit codes of the characters in the string format.
  */
-void getTable(BSTNode *tree, string way, string *table){
+void getTable(TreeNode *tree, string way, string *table){
     if (tree != 0){
         getTable(tree->left, way + "0", table);
         if (tree->isBusy){
-            table[(int)(unsigned char)tree->ch] = way;            
+            table[(int)(unsigned char)tree->ch] = way;
         }
         getTable(tree->right, way + "1", table);
     } else {
@@ -398,14 +394,15 @@ void dearchiveFile(string archiveName, string resultName){
     archivedFile.close();
 
     /* Queue for building the tree generated from encoding table*/
-    PQueueSHPP<BSTNode*> queue = getQueue(alphFromFile);
+    PQueueSHPP<TreeNode*> queue = getQueue(alphFromFile);
 
     /* Huffman tree generated from the encoding table */
-    BSTNode * root = getTree(queue);
+    TreeNode * root = getTree(queue);
 
     /* Writing encoded file*/
     writeDeArchFile(resultName, inputFileBody, root, sourceFileLength, bodySize);
     delete[] alphFromFile;
+    clearTree(root);
 }
 
 /**
@@ -563,7 +560,7 @@ char* getBodyFromFile(ifstream &file, int delCh, int& bodySize){
  * @param root Binary tree with characters for decoding.
  * @param sourceFileLength Length of the source file.
  */
-void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileLength, int bodySize){
+void writeDeArchFile(string fileName, char* body, TreeNode *root, int sourceFileLength, int bodySize){
     string bitStr = "";
 
     for (int i = 0; i < bodySize; i++){
@@ -573,9 +570,9 @@ void writeDeArchFile(string fileName, char* body, BSTNode *root, int sourceFileL
     ofstream result(fileName, ios::out | ios::binary);
 
     int chCounter = 0;
-    BSTNode *node = root;
+    TreeNode *node = root;
 
-    for (int i = 0; i < bitStr.size(); i++) {
+    for (unsigned int i = 0; i < bitStr.size(); i++) {
         if (bitStr[i] == '1') {
             node = node->right; // turn right if 1
         } else if (bitStr[i] == '0') {
@@ -615,3 +612,22 @@ string getBitsFromChar(char ch){
     return result;
 }
 
+
+/**
+ * Function: clearTree
+ * Usage: clearTree(tree);
+ *
+ * -------------------------------------------------
+ * Frees memory allocated for Huffmans tree
+ *
+ * @param tree Pointer to tree node
+ */
+void clearTree(TreeNode *tree){
+    if (tree->left != 0){
+        clearTree(tree->left);
+    }
+    if (tree->right != 0){
+        clearTree(tree->right);
+    }
+    delete tree;
+}
