@@ -57,16 +57,26 @@ int main(int argc, char* argv[]) {
     }
 
     if (command == "-ar"){
-        cout << "Processing... " << endl << endl;
-        archiveFile(filename, filename + ".huf");
-        cout << "Archivation done. File: (" << filename + ".huf) " << "created." << endl;
-    } else if (command == "-de"){
-        if (filename.substr(filename.length() - 4) == ".huf"){
+        try{
             cout << "Processing... " << endl << endl;
-            dearchiveFile(filename, "ORIGINAL_"+filename.substr(0, filename.length() - 4));
-            cout << "Extraction done!!! File("<< "ORIGINAL_"+filename.substr(0, filename.length() - 4) << ") created" << endl;
-        } else {
-            cout << "File not exist or not Huffman archive" << endl;
+            archiveFile(filename, filename + ".huf");
+            cout << "Archivation done. File: (" << filename + ".huf) " << "created." << endl;
+        }
+        catch(...){
+            cerr << "Error while compressing file" << endl;
+        }
+    } else if (command == "-de"){
+        try{
+            if (filename.substr(filename.length() - 4) == ".huf"){
+                cout << "Processing... " << endl << endl;
+                dearchiveFile(filename, "ORIGINAL_"+filename.substr(0, filename.length() - 4));
+                cout << "Extraction done!!! File("<< "ORIGINAL_"+filename.substr(0, filename.length() - 4) << ") created" << endl;
+            } else {
+                cout << "File is not Huffman archive" << endl;
+            }
+        }
+        catch (...){
+            cerr << "Error while decompressing file" << endl;
         }
     } else {
         cout << "Please enter a valid command \"-ar filename\" to archive file, \"-de filename\" to dearchive file!!!" << endl;
@@ -118,9 +128,6 @@ void archiveFile(string sourceFilename, string resultFilename){
     /* Table for coding characters saved in the array "table" */
     string way = ""; // way to the character in the binary tree in format "010100..."
     string* table = new string[BYTES_NUMBER];
-    for(int i = 0; i < BYTES_NUMBER; i++){
-        table[i] = "";
-    }
     getTable(tree, way, table);
 
 

@@ -18,3 +18,6 @@ TEMPLATE = app
 
 SOURCES += \
     Huffman.cpp
+
+HEADERS += \
+    pqueueshpp.h
